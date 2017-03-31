@@ -30,6 +30,7 @@ void lwan_socket_shutdown(struct lwan *l);
 void lwan_thread_init(struct lwan *l);
 void lwan_thread_shutdown(struct lwan *l);
 void lwan_thread_add_client(struct lwan_thread *t, int fd);
+void lwan_thread_nudge(struct lwan_thread *t, bool created);
 
 void lwan_status_init(struct lwan *l);
 void lwan_status_shutdown(struct lwan *l);
@@ -49,3 +50,5 @@ void lwan_straitjacket_enforce(struct config *c, struct config_line *l);
 
 uint8_t lwan_char_isspace(char ch) __attribute__((pure));
 uint8_t lwan_char_isxdigit(char ch) __attribute__((pure));
+
+size_t lwan_nextpow2(size_t number);

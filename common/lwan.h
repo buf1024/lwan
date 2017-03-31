@@ -36,6 +36,7 @@ extern "C" {
 #include "lwan-status.h"
 #include "lwan-trie.h"
 #include "strbuf.h"
+#include "queue.h"
 
 #define DEFAULT_BUFFER_SIZE 4096
 #define DEFAULT_HEADERS_SIZE 512
@@ -296,6 +297,7 @@ struct lwan_thread {
         char expires[30];
         time_t last;
     } date;
+    struct spsc_queue pending_fds;
 
     int epoll_fd;
     int pipe_fd[2];

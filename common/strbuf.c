@@ -23,50 +23,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lwan.h"
+#include "lwan-private.h"
 #include "strbuf.h"
 
 static const unsigned int STATIC = 1<<0;
 static const unsigned int DYNAMICALLY_ALLOCATED = 1<<1;
 static const size_t DEFAULT_BUF_SIZE = 64;
 
-static size_t
-find_next_power_of_two(size_t number)
-{
-#if defined(HAVE_BUILTIN_CLZLL)
-    static const int size_bits = (int)sizeof(number) * CHAR_BIT;
-
-    if (sizeof(size_t) == sizeof(unsigned int)) {
-        return (size_t)1 << (size_bits - __builtin_clz((unsigned int)number));
-    } else if (sizeof(size_t) == sizeof(unsigned long)) {
-        return (size_t)1 << (size_bits - __builtin_clzl((unsigned long)number));
-    } else if (sizeof(size_t) == sizeof(unsigned long long)) {
-        return (size_t)1 << (size_bits - __builtin_clzll((unsigned long long)number));
-    } else {
-        (void)size_bits;
-    }
-#endif
-
-    number--;
-    number |= number >> 1;
-    number |= number >> 2;
-    number |= number >> 4;
-    number |= number >> 8;
-    number |= number >> 16;
-
-    return number + 1;
-}
-
 static inline size_t align_size(size_t unaligned_size)
 {
-    const size_t aligned_size = find_next_power_of_two(unaligned_size);
+    const size_t aligned_size = lwan_nextpow2(unaligned_size);
 
     if (UNLIKELY(unaligned_size >= aligned_size))
         return 0;
 
     return aligned_size;
 }
-
 
 static ALWAYS_INLINE size_t
 max(size_t one, size_t another)

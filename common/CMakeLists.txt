@@ -31,6 +31,7 @@ set(SOURCES
 	realpathat.c
 	sd-daemon.c
 	strbuf.c
+	queue.c
 )
 
 include(CheckFunctionExists)

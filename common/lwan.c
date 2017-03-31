@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <libproc.h>
 #include <limits.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -577,6 +578,11 @@ lwan_init_with_config(struct lwan *l, const struct lwan_config *config)
 
         lwan_status_warning("%d threads requested, but only %d online CPUs; capping to %d threads",
             l->config.n_threads, n_cpus, 3 * n_cpus);
+    } else if (l->config.n_threads > 63) {
+        l->thread.count = 64;
+
+        lwan_status_warning("%d threads requested, but max 64 supported",
+            l->config.n_threads);
     } else {
         l->thread.count = l->config.n_threads;
     }
@@ -620,7 +626,7 @@ lwan_shutdown(struct lwan *l)
     lwan_module_shutdown(l);
 }
 
-static ALWAYS_INLINE void
+static ALWAYS_INLINE int
 schedule_client(struct lwan *l, int fd)
 {
     int thread;
@@ -640,6 +646,8 @@ schedule_client(struct lwan *l, int fd)
 #endif
     struct lwan_thread *t = &l->thread.threads[thread];
     lwan_thread_add_client(t, fd);
+
+    return thread;
 }
 
 static volatile sig_atomic_t main_socket = -1;
@@ -651,14 +659,69 @@ sigint_handler(int signal_number __attribute__((unused)))
 {
     if (main_socket < 0)
         return;
+
     shutdown((int)main_socket, SHUT_RDWR);
     close((int)main_socket);
+
     main_socket = -1;
+}
+
+static bool
+wait_herd(void)
+{
+    struct pollfd fds = { .fd = (int)main_socket, .events = POLLIN };
+
+    return poll(&fds, 1, -1) == 1;
+}
+
+enum herd_accept { HERD_MORE = 0, HERD_GONE = -1, HERD_SHUTDOWN = 1 };
+
+static enum herd_accept
+accept_one(struct lwan *l, uint64_t *cores)
+{
+    int fd = accept4((int)main_socket, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
+
+    if (LIKELY(fd >= 0)) {
+        *cores |= 1ULL<<(unsigned)schedule_client(l, fd);
+        return HERD_MORE;
+    }
+
+    switch (errno) {
+    case EAGAIN:
+        return HERD_GONE;
+    case EBADF:
+    case ECONNABORTED:
+        if (main_socket < 0) {
+            lwan_status_info("Signal 2 (Interrupt) received");
+        } else {
+            lwan_status_info("Main socket closed for unknown reasons");
+        }
+        return HERD_SHUTDOWN;
+    }
+
+    lwan_status_perror("accept");
+    return HERD_MORE;
+}
+
+static inline enum herd_accept
+accept_herd(struct lwan *l, uint64_t *cores)
+{
+    enum herd_accept ha;
+
+    if (!wait_herd())
+        return HERD_GONE;
+
+    while ((ha = accept_one(l, cores)) == HERD_MORE) {
+    }
+
+    return ha;
 }
 
 void
 lwan_main_loop(struct lwan *l)
 {
+    uint64_t cores = 0;
+
     assert(main_socket == -1);
     main_socket = l->main_socket;
     if (signal(SIGINT, sigint_handler) == SIG_ERR)
@@ -666,23 +729,44 @@ lwan_main_loop(struct lwan *l)
 
     lwan_status_info("Ready to serve");
 
-    for (;;) {
-        int client_fd = accept4((int)main_socket, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
-        if (UNLIKELY(client_fd < 0)) {
-            switch (errno) {
-            case EBADF:
-            case ECONNABORTED:
-                if (main_socket < 0) {
-                    lwan_status_info("Signal 2 (Interrupt) received");
-                } else {
-                    lwan_status_info("Main socket closed for unknown reasons");
-                }
-                return;
+    while (LIKELY(main_socket >= 0)) {
+        if (UNLIKELY(accept_herd(l, &cores) == HERD_SHUTDOWN))
+            break;
+
+        if (LIKELY(cores)) {
+            for (unsigned short t = 0; t < l->thread.count; t++) {
+                if (cores & 1ULL<<t)
+                    lwan_thread_nudge(&l->thread.threads[t], true);
             }
 
-            lwan_status_perror("accept");
-        } else {
-            schedule_client(l, client_fd);
+            cores = 0;
         }
     }
+}
+
+size_t
+lwan_nextpow2(size_t number)
+{
+#if defined(HAVE_BUILTIN_CLZLL)
+    static const int size_bits = (int)sizeof(number) * CHAR_BIT;
+
+    if (sizeof(size_t) == sizeof(unsigned int)) {
+        return (size_t)1 << (size_bits - __builtin_clz((unsigned int)number));
+    } else if (sizeof(size_t) == sizeof(unsigned long)) {
+        return (size_t)1 << (size_bits - __builtin_clzl((unsigned long)number));
+    } else if (sizeof(size_t) == sizeof(unsigned long long)) {
+        return (size_t)1 << (size_bits - __builtin_clzll((unsigned long long)number));
+    } else {
+        (void)size_bits;
+    }
+#endif
+
+    number--;
+    number |= number >> 1;
+    number |= number >> 2;
+    number |= number >> 4;
+    number |= number >> 8;
+    number |= number >> 16;
+
+    return number + 1;
 }
