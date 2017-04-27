@@ -304,8 +304,8 @@ struct lwan_thread {
 };
 
 struct lwan_config {
-    char *listener;
-    char *error_template;
+    char *listener;                     // 监听host:port, 默认localhost:8080
+    char *error_template;               //
     char *config_file_path;
     size_t max_post_data_size;
     unsigned short keep_alive_timeout;
@@ -319,17 +319,17 @@ struct lwan_config {
 };
 
 struct lwan {
-    struct lwan_trie url_map_trie;
-    struct lwan_connection *conns;
+    struct lwan_trie url_map_trie;  // trie， 存储 url 和 handler
+    struct lwan_connection *conns;  // connection 数组
 
     struct {
         struct lwan_thread *threads;
         unsigned int max_fd;
         unsigned short count;
-    } thread;
+    } thread;                       // 线程控制信息
 
-    struct hash *module_registry;
-    struct lwan_config config;
+    struct hash *module_registry;   // lwan相关注册模块
+    struct lwan_config config;      // 配置相关
     int main_socket;
 };
 

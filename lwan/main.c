@@ -104,7 +104,7 @@ main(int argc, char *argv[])
 {
     struct lwan l;
     struct lwan_config c;
-    char root[PATH_MAX];
+    char root[PATH_MAX];            // 默认服务的目录
     int ret = EXIT_SUCCESS;
 
     if (!getcwd(root, PATH_MAX))
