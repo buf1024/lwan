@@ -392,6 +392,7 @@ static bool setup_from_config(struct lwan *lwan, const char *path)
     bool has_listener = false;
     char path_buf[PATH_MAX];
 
+    // 如果为空，默认取exe所在的路径.conf结尾的配置，如果没有则取lwan.conf
     if (!path)
         path = get_config_path(path_buf);
     lwan_status_info("Loading configuration file: %s", path);
@@ -400,6 +401,7 @@ static bool setup_from_config(struct lwan *lwan, const char *path)
     if (!conf)
         return false;
 
+    // 初始化trie树
     if (!lwan_trie_init(&lwan->url_map_trie, destroy_urlmap))
         return false;
 

@@ -48,6 +48,7 @@ parse_args(int argc, char *argv[], struct lwan_config *config, char *root)
     while ((c = getopt_long(argc, argv, "hr:l:c:", opts, &optidx)) != -1) {
         switch (c) {
         case 'c':
+            // 开始config->config_file_path为NULL，free NULL是没什么问题的
             free(config->config_file_path);
             config->config_file_path = strdup(optarg);
             result = ARGS_USE_CONFIG;
@@ -139,8 +140,8 @@ main(int argc, char *argv[])
     lwan_shutdown(&l);
 
 out:
-    free(c.listener);
-    free(c.config_file_path);
+    //free(c.listener);
+    //free(c.config_file_path);
 
     return ret;
 }

@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/*lwan stdout的日志模块*/
+
 #define _GNU_SOURCE
 #include <errno.h>
 #include <libgen.h>
@@ -27,6 +29,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "lwan-private.h"
 
@@ -39,9 +42,9 @@ enum lwan_status_type {
     STATUS_DEBUG = 1<<5,
 };
 
-static volatile bool quiet = false;
-static bool use_colors;
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static volatile bool quiet = false; // 此处volatile设置貌似没用，quiet貌似步会被意外修改。
+static bool use_colors;  
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // 多线程环境下避免日志混乱引入的互斥量
 
 void
 lwan_status_init(struct lwan *l)
@@ -50,7 +53,7 @@ lwan_status_init(struct lwan *l)
     quiet = l->config.quiet;
 #else
     quiet = false;
-    (void) l;
+    (void) l;                 // 避免编译告警
 #endif
     use_colors = isatty(fileno(stdout));
 }
@@ -127,6 +130,15 @@ status_out_msg(const char *file, const int line, const char *func,
 
     if (UNLIKELY(pthread_mutex_lock(&mutex) < 0))
         perror("pthread_mutex_lock");
+
+        // 日志增加时间
+        struct timeval now;
+        gettimeofday(&now, NULL);
+
+        char time_buf[32] = { 0 };
+        int time_len = snprintf(time_buf, sizeof(time_buf) - 1,
+            "[%ld.%ld] ", now.tv_sec, now.tv_usec);
+        fwrite(time_buf, (size_t)time_len, 1, stdout);
 
 #ifndef NDEBUG
     if (use_colors) {

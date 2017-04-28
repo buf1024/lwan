@@ -710,6 +710,12 @@ serve_files_init(const char *prefix, void *args)
     priv->serve_precompressed_files = settings->serve_precompressed_files;
     priv->auto_index = settings->auto_index;
 
+    // trace
+    printf("servfile priv:\n"
+        "root_path=%s\n"
+        "index_html=%s\n",
+        priv->root_path, priv->index_html);
+
     return priv;
 
 out_tpl_prefix_copy:

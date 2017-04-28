@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+/*lwan job 低优先级后台线程*/
+
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
@@ -25,6 +27,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "lwan.h"
 #include "lwan-status.h"
@@ -38,14 +41,19 @@ struct job {
 
 static pthread_t self;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-static bool running = false;
+static bool running = false;      // job 线程开挂标志
 static struct list_head jobs;
+
+// 修改原来lwan调用sleep的方法，sleep的方式不能响应信号，退出时间比较长
+static pthread_mutex_t job_wait_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  job_wait_cond = PTHREAD_COND_INITIALIZER;
 
 static void*
 job_thread(void *data __attribute__((unused)))
 {
-    struct timespec rgtp = { 1, 0 };
-
+    pthread_mutex_lock(&job_wait_mutex);
+    int job_wait_sec = 1;
+    
     while (running) {
         bool had_job = false;
 
@@ -58,16 +66,23 @@ job_thread(void *data __attribute__((unused)))
             pthread_mutex_unlock(&queue_mutex);
         }
 
-        if (had_job)
-            rgtp.tv_sec = 1;
-        else if (rgtp.tv_sec <= 15)
-            rgtp.tv_sec++;
 
-        if (UNLIKELY(nanosleep(&rgtp, NULL) < 0)) {
-            if (errno == EINTR)
-                sleep(1);
-        }
+        if (had_job)
+            job_wait_sec = 1;
+        else if (job_wait_sec <= 15)
+            job_wait_sec++;
+        
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        struct timespec rgtp = { now.tv_sec + job_wait_sec, now.tv_usec * 1000 };
+
+        pthread_cond_timedwait(&job_wait_cond, &job_wait_mutex, &rgtp);
+        //if (UNLIKELY(nanosleep(&rgtp, NULL) < 0)) {
+        //    if (errno == EINTR)
+        //        sleep(1);
+        //}
     }
+     pthread_mutex_unlock(&job_wait_mutex);
 
     return NULL;
 }
@@ -88,6 +103,7 @@ void lwan_job_thread_init(void)
     struct sched_param sched_param = {
         .sched_priority = 0
     };
+    // 设置进程调度级别为SCHED_IDLE非常低级别
     if (pthread_setschedparam(self, SCHED_IDLE, &sched_param) < 0)
         lwan_status_perror("pthread_setschedparam");
 #endif  /* SCHED_IDLE */
@@ -107,6 +123,9 @@ void lwan_job_thread_shutdown(void)
         }
         running = false;
 
+        pthread_cond_signal(&job_wait_cond);
+
+        // 等待线程结束
         r = pthread_join(self, NULL);
         if (r) {
             errno = r;

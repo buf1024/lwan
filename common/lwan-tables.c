@@ -59,6 +59,7 @@ lwan_tables_init(void)
     }
 
     mime_entries_initialized = true;
+
 }
 
 void
@@ -145,7 +146,7 @@ lwan_http_status_as_string_with_code(enum lwan_http_status status)
         RESP(520, "Server too high"),
     };
 #undef RESP
-
+    //  查表大法好用
     ret = LIKELY(status < N_ELEMENTS(responses)) ? responses[status] : NULL;
     return LIKELY(ret) ? ret : "999 Invalid";
 }
@@ -200,6 +201,7 @@ lwan_http_status_as_descriptive_string(enum lwan_http_status status)
     return "Invalid";
 }
 
+//  查表大法好用
 enum {
     CHAR_PROP_SPACE = 1<<0,
     CHAR_PROP_HEX = 1<<1
