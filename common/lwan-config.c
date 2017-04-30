@@ -669,7 +669,7 @@ struct config *config_open(const char *path)
         close(fd);
         return NULL;
     }
-
+    // 将数据放到共享内存之中
     data = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     close(fd);
     if (data == MAP_FAILED)

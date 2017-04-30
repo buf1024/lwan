@@ -405,6 +405,8 @@ static bool setup_from_config(struct lwan *lwan, const char *path)
     if (!lwan_trie_init(&lwan->url_map_trie, destroy_urlmap))
         return false;
 
+    // 16年5月份提过解析问题的BUG，现在的实现方式和16年的不样，几乎重写了
+    // https://github.com/lpereira/lwan/issues/141
     while (config_read_line(conf, &line)) {
         switch (line.type) {
         case CONFIG_LINE_TYPE_LINE:

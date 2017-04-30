@@ -140,6 +140,14 @@ main(int argc, char *argv[])
     lwan_shutdown(&l);
 
 out:
+    // 可能导致double free问题
+    // 原因是在lwan_shutdown函数里面，下面判断总是成立
+    //     if (l->config.listener != default_config.listener)
+    //         free(l->config.listener);
+    // 已经提交issue https://github.com/lpereira/lwan/issues/197
+    // 不知道是个人表达原因，还是作者原因，作者的修复没有修复到重点
+    // 这里只是粗暴注释掉，原因是程序已经退出了，动态分配的内存被OS回收
+
     //free(c.listener);
     //free(c.config_file_path);
 

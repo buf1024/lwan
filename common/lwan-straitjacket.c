@@ -209,7 +209,9 @@ void lwan_straitjacket_enforce(struct config *c, struct config_line *l)
             }
 
             if (chroot_path) {
-                abort_on_open_directories();
+                // 不明白为和一个切换用户，搞的那么复杂，在linux下面总是abort
+                // 已经提问作者 https://github.com/lpereira/lwan/issues/198
+                //abort_on_open_directories();
                 if (chroot(chroot_path) < 0) {
                     lwan_status_critical_perror("Could not chroot() to %s",
                         chroot_path);

@@ -51,6 +51,8 @@ static pthread_cond_t  job_wait_cond = PTHREAD_COND_INITIALIZER;
 static void*
 job_thread(void *data __attribute__((unused)))
 {
+    // 后台处理线程，当程序退出时，原来程序的逻辑用sleep的方式，导致程序延迟退出，这里是已经修复的
+    // 已经是已经优化的，已经提交issue： https://github.com/lpereira/lwan/issues/196 
     pthread_mutex_lock(&job_wait_mutex);
     int job_wait_sec = 1;
     
