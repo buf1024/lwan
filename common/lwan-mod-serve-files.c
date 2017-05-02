@@ -1006,6 +1006,8 @@ serve_files_handle_cb(struct lwan_request *request, struct lwan_response *respon
         goto fail;
     }
 
+    //char hello[102400] = {0};
+
     ce = cache_coro_get_and_ref_entry(priv->cache, request->conn->coro,
                 request->url.value);
     if (LIKELY(ce)) {

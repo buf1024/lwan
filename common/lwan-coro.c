@@ -327,6 +327,7 @@ coro_defer_any(struct coro *coro, defer_func func, void *data1, void *data2)
     defer->data2 = data2;
 }
 
+// coro_defer 在coro释放或销毁，或超时，里面的函数被调用，主要用于资源清理
 ALWAYS_INLINE void
 coro_defer(struct coro *coro, void (*func)(void *data), void *data)
 {

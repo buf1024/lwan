@@ -623,7 +623,7 @@ lwan_shutdown(struct lwan *l)
     lwan_http_authorize_shutdown();
     lwan_module_shutdown(l);
 }
-
+// 将收到的fd分发到相应的线程
 static ALWAYS_INLINE void
 schedule_client(struct lwan *l, int fd)
 {

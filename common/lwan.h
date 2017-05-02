@@ -263,11 +263,13 @@ struct lwan_request {
     struct lwan_response response;
 };
 
+/*lwan 模块是函数名为 lwan_module_模块名的函数，内置模块使用-rdynamic编译进可执行程序内*/
 struct lwan_module {
     void *(*init)(const char *prefix, void *args);
     void *(*init_from_hash)(const char *prefix, const struct hash *hash);
     void (*shutdown)(void *data);
     bool (*parse_conf)(void *data, struct config *config);
+    // http 请求处理函数
     enum lwan_http_status (*handle)(struct lwan_request *request, struct lwan_response *response, void *data);
     enum lwan_handler_flags flags;
 };

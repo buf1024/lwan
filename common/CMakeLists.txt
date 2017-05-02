@@ -11,6 +11,7 @@ set(SOURCES
 	lwan-http-authorize.c
 	lwan-io-wrappers.c
 	lwan-job.c
+	lwan-mod-helloworld.c
 	lwan-mod-redirect.c
 	lwan-mod-response.c
 	lwan-mod-rewrite.c
