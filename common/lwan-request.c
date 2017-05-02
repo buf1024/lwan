@@ -1163,6 +1163,7 @@ lwan_process_request(struct lwan *l, struct lwan_request *request,
         .error_when_n_packets = calculate_n_packets(DEFAULT_BUFFER_SIZE)
     };
 
+    // 从网络中读取http报文，读取过程中，coro可能进行切换
     status = read_request(request, &helper);
     if (UNLIKELY(status != HTTP_OK)) {
         /* This request was bad, but maybe there's a good one in the
@@ -1178,6 +1179,7 @@ lwan_process_request(struct lwan *l, struct lwan_request *request,
         __builtin_unreachable();
     }
 
+    // http 报文的解析
     status = parse_http_request(request, &helper);
     if (UNLIKELY(status != HTTP_OK)) {
         lwan_default_response(request, status);
@@ -1185,18 +1187,21 @@ lwan_process_request(struct lwan *l, struct lwan_request *request,
     }
 
 lookup_again:
+    // 查找url处理的模块
     url_map = lwan_trie_lookup_prefix(&l->url_map_trie, request->url.value);
     if (UNLIKELY(!url_map)) {
         lwan_default_response(request, HTTP_NOT_FOUND);
         goto out;
     }
 
+    // http 报文的解析各个参数
     status = prepare_for_response(url_map, request, &helper);
     if (UNLIKELY(status != HTTP_OK)) {
         lwan_default_response(request, status);
         goto out;
     }
 
+    // 调用处理模块
     status = url_map->handler(request, &request->response, url_map->data);
     if (UNLIKELY(url_map->flags & HANDLER_CAN_REWRITE_URL)) {
         if (request->flags & RESPONSE_URL_REWRITTEN) {
@@ -1206,6 +1211,7 @@ lookup_again:
         }
     }
 
+    // 处理模块应答
     lwan_response(request, status);
 
 out:

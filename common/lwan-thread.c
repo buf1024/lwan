@@ -136,6 +136,7 @@ min(const int a, const int b)
     return a < b ? a : b;
 }
 
+// http请求处理函数
 static int
 process_request_coro(struct coro *coro)
 {
@@ -303,6 +304,7 @@ spawn_coro(struct lwan_connection *conn,
     conn->coro = coro_new(switcher, process_request_coro, conn);
     conn->flags = CONN_IS_ALIVE | CONN_SHOULD_RESUME_CORO;
 
+    // 相当于回话管理
     death_queue_insert(dq, conn);
 }
 
@@ -369,7 +371,7 @@ thread_io_loop(void *data)
             }
             continue;
         case 0: /* timeout: shutdown waiting sockets */
-            death_queue_kill_waiting(&dq);
+            death_queue_kill_waiting(&dq); // 超时的处理，IDLE job线程处理
             break;
         default: /* activity in some of this poller's file descriptor */
             update_date_cache(t);
@@ -378,9 +380,12 @@ thread_io_loop(void *data)
                 struct lwan_connection *conn;
 
                 if (!ep_event->data.ptr) {
+                    // 新连接收到数据
                     int cmd = grab_command(read_pipe_fd);
                     if (LIKELY(cmd >= 0)) {
                         conn = watch_client(epoll_fd, cmd, conns);
+                        // 新建coro，并进行协成切换，切换后，程序即到切换执行的程序运行
+                        // 即： process_request_coro
                         spawn_coro(conn, &switcher, &dq);
                     } else if (UNLIKELY(cmd == -1)) {
                         continue;
@@ -455,8 +460,9 @@ void
 lwan_thread_add_client(struct lwan_thread *t, int fd)
 {
     t->lwan->conns[fd].flags = 0;
-    t->lwan->conns[fd].thread = t;
+    t->lwan->conns[fd].thread = t; 
 
+    // 线程epoll这个fd
     if (UNLIKELY(write(t->pipe_fd[1], &fd, sizeof(int)) < 0))
         lwan_status_perror("write");
 }
