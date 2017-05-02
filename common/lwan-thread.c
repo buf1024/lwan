@@ -343,7 +343,7 @@ thread_io_loop(void *data)
     struct lwan_connection *conns = lwan->conns;
     struct epoll_event *events;
     struct coro_switcher switcher;
-    struct death_queue_t dq;
+    struct death_queue_t dq;          // “死亡”队列, 主要用于空闲的链接，超时的链接的控制
     int n_fds;
 
     lwan_status_debug("Starting IO loop on thread #%d",
@@ -355,7 +355,7 @@ thread_io_loop(void *data)
 
     death_queue_init(&dq, lwan);
 
-    pthread_barrier_wait(t->barrier);
+    pthread_barrier_wait(t->barrier);   // 等待其他线程
     t->barrier = NULL;
 
     for (;;) {
@@ -430,6 +430,7 @@ create_thread(struct lwan *l, struct lwan_thread *thread, pthread_barrier_t *bar
     if (pthread_attr_init(&attr))
         lwan_status_critical_perror("pthread_attr_init");
 
+    // 设置线程调度级别为系统级别，这样，系统对待该线程如对待进程一样， 非常重要！！
     if (pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM))
         lwan_status_critical_perror("pthread_attr_setscope");
 
@@ -463,7 +464,7 @@ lwan_thread_add_client(struct lwan_thread *t, int fd)
 void
 lwan_thread_init(struct lwan *l)
 {
-    pthread_barrier_t barrier;
+    pthread_barrier_t barrier;  // barrier的作用是等所有的线程都初始化完毕，才开始服务
 
     if (pthread_barrier_init(&barrier, NULL, (unsigned)l->thread.count + 1))
         lwan_status_critical("Could not create barrier");

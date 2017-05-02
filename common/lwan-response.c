@@ -76,6 +76,7 @@ lwan_response_init(struct lwan *l)
 
     lwan_status_debug("Initializing default response");
 
+    // 错误模板的配置 
     if (l->config.error_template) {
         error_template = lwan_tpl_compile_file(l->config.error_template,
             error_descriptor);

@@ -297,10 +297,10 @@ struct lwan_thread {
         time_t last;
     } date;
 
-    int epoll_fd;
-    int pipe_fd[2];
+    int epoll_fd;           // 线程epoll fd
+    int pipe_fd[2];         // 用于主线程与线程之间通信，主要是fd分发
     pthread_t self;
-    void *barrier;
+    void *barrier;         // 线程barrier信息，主要用于通知主线程，已经准备好服务
 };
 
 struct lwan_config {
@@ -320,12 +320,12 @@ struct lwan_config {
 
 struct lwan {
     struct lwan_trie url_map_trie;  // trie， 存储 url 和 handler
-    struct lwan_connection *conns;  // connection 数组
+    struct lwan_connection *conns;  // connection 数组， 其大小为最大文件描述符
 
     struct {
-        struct lwan_thread *threads;
-        unsigned int max_fd;
-        unsigned short count;
+        struct lwan_thread *threads; // 线程信息
+        unsigned int max_fd;        // 每个线程最大文件描述符数
+        unsigned short count;       // 线程个数
     } thread;                       // 线程控制信息
 
     struct hash *module_registry;   // lwan相关注册模块

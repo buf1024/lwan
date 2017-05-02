@@ -509,6 +509,7 @@ allocate_connections(struct lwan *l, size_t max_open_files)
 {
     const size_t sz = max_open_files * sizeof(struct lwan_connection);
 
+    // 内存对齐策略？
     if (posix_memalign((void **)&l->conns, 64, align_to_size(sz, 64)))
         lwan_status_critical_perror("aligned_alloc");
 
@@ -571,6 +572,7 @@ lwan_init_with_config(struct lwan *l, const struct lwan_config *config)
     /* Continue initialization as normal. */
     lwan_status_debug("Initializing lwan web server");
 
+    // 根据CPU个数器线程
     unsigned short n_cpus = get_number_of_cpus();
     if (!l->config.n_threads) {
         l->thread.count = n_cpus;
@@ -595,7 +597,7 @@ lwan_init_with_config(struct lwan *l, const struct lwan_config *config)
     signal(SIGPIPE, SIG_IGN);
 
     lwan_thread_init(l);
-    lwan_socket_init(l);
+    lwan_socket_init(l); // 设置监听端口
     lwan_http_authorize_init();
 }
 

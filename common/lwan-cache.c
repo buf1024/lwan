@@ -282,6 +282,7 @@ destroy_entry:
     }
 }
 
+// 低级别的IDLE thread调用
 static bool cache_pruner_job(void *data)
 {
     struct cache *cache = data;
